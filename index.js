@@ -72,8 +72,8 @@ module.exports = function () {
         timer
       ) {
         var word = wordData[wordIndex];
-        word.x = 0;
-        word.y = 0;
+        word.x = size[0] / 2;
+        word.y = size[1] / 2;
         cloudSprite(contextAndRatio, word, wordData, wordIndex);
         if (word.hasText && place(board, word, bounds, isFirst)) {
           isFirst = false;
