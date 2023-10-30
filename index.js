@@ -36,26 +36,26 @@ module.exports = function () {
   };
 
   cloud.start = function () {
-    var contextAndRatio = getContext(canvas()),
-      board = zeroArray((size[0] >> 5) * size[1]),
-      bounds = null,
-      n = words.length,
-      i = -1,
-      tags = [],
-      data = words
-        .map(function (d, i) {
-          d.text = text.call(this, d, i);
-          d.font = font.call(this, d, i);
-          d.style = fontStyle.call(this, d, i);
-          d.weight = fontWeight.call(this, d, i);
-          d.rotate = rotate.call(this, d, i);
-          d.size = ~~fontSize.call(this, d, i);
-          d.padding = padding.call(this, d, i);
-          return d;
-        })
-        .sort(function (a, b) {
-          return b.size - a.size;
-        });
+    var contextAndRatio = getContext(canvas());
+    var board = zeroArray((size[0] >> 5) * size[1]);
+    var bounds = null;
+    const wordCount = words.length;
+    var i = -1;
+    const tags = [];
+    var wordData = words
+      .map(function (word, index) {
+        word.text = text.call(this, word, index);
+        word.font = font.call(this, word, index);
+        word.style = fontStyle.call(this, word, index);
+        word.weight = fontWeight.call(this, word, index);
+        word.rotate = rotate.call(this, word, index);
+        word.size = ~~fontSize.call(this, word, index);
+        word.padding = padding.call(this, word, index);
+        return word;
+      })
+      .sort(function (a, b) {
+        return b.size - a.size;
+      });
 
     if (timer) clearInterval(timer);
     timer = setInterval(step, 0);
@@ -65,26 +65,28 @@ module.exports = function () {
 
     function step() {
       var start = Date.now();
-      while (Date.now() - start < timeInterval && ++i < n && timer) {
-        var d = data[i];
-        d.x = (size[0] * 0.5) >> 1;
-        d.y = (size[1] * 0.5) >> 1;
-        cloudSprite(contextAndRatio, d, data, i);
-        if (d.hasText && place(board, d, bounds)) {
-          tags.push(d);
-          event.call("word", cloud, d);
-          if (bounds) cloudBounds(bounds, d);
+      var isFirst = true;
+      while (Date.now() - start < timeInterval && ++i < wordCount && timer) {
+        var word = wordData[i];
+        word.x = size[0] >> 1;
+        word.y = size[1] >> 1;
+        cloudSprite(contextAndRatio, word, wordData, i);
+        if (word.hasText && place(board, word, bounds, isFirst)) {
+          isFirst = false;
+          tags.push(word);
+          event.call("word", cloud, word);
+          if (bounds) cloudBounds(bounds, word);
           else
             bounds = [
-              { x: d.x + d.x0, y: d.y + d.y0 },
-              { x: d.x + d.x1, y: d.y + d.y1 },
+              { x: word.x + word.x0, y: word.y + word.y0 },
+              { x: word.x + word.x1, y: word.y + word.y1 },
             ];
           // Temporary hack
-          d.x -= size[0] >> 1;
-          d.y -= size[1] >> 1;
+          word.x -= size[0] >> 1;
+          word.y -= size[1] >> 1;
         }
       }
-      if (i >= n) {
+      if (i >= wordCount) {
         cloud.stop();
         event.call("end", cloud, tags, bounds);
       }
@@ -115,16 +117,12 @@ module.exports = function () {
     return { context, ratio };
   }
 
-  function place(board, tag, bounds) {
-    var perimeter = [
-        { x: 0, y: 0 },
-        { x: size[0], y: size[1] },
-      ],
-      startX = tag.x,
+  function place(board, tag, bounds, isFirst = false) {
+    var startX = tag.x,
       startY = tag.y,
       maxDelta = Math.sqrt(size[0] * size[0] + size[1] * size[1]),
       s = spiral(size),
-      dt = random() < 0.5 ? 1 : -1,
+      dt = isFirst ? 1 : random() < 0.5 ? 1 : -1,
       t = -dt,
       dxdy,
       dx,
