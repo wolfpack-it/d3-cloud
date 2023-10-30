@@ -10,8 +10,8 @@ const SPIRALS = {
   rectangular: rectangularSpiral,
 };
 
-const cw = (1 << 11) >> 5;
-const ch = 1 << 11;
+const canvasWidth = (1 << 11) >> 5;
+const canvasHeight = 1 << 11;
 
 module.exports = function () {
   var size = [256, 256],
@@ -40,7 +40,7 @@ module.exports = function () {
     var board = zeroArray((size[0] >> 5) * size[1]);
     var bounds = null;
     const wordCount = words.length;
-    var i = -1;
+    var wordIndex = -1;
     const tags = [];
     var wordData = words
       .map(function (word, index) {
@@ -66,11 +66,15 @@ module.exports = function () {
     function step() {
       var start = Date.now();
       var isFirst = true;
-      while (Date.now() - start < timeInterval && ++i < wordCount && timer) {
-        var word = wordData[i];
-        word.x = size[0] >> 1;
-        word.y = size[1] >> 1;
-        cloudSprite(contextAndRatio, word, wordData, i);
+      while (
+        Date.now() - start < timeInterval &&
+        ++wordIndex < wordCount &&
+        timer
+      ) {
+        var word = wordData[wordIndex];
+        word.x = 0;
+        word.y = 0;
+        cloudSprite(contextAndRatio, word, wordData, wordIndex);
         if (word.hasText && place(board, word, bounds, isFirst)) {
           isFirst = false;
           tags.push(word);
@@ -86,7 +90,7 @@ module.exports = function () {
           word.y -= size[1] >> 1;
         }
       }
-      if (i >= wordCount) {
+      if (wordIndex >= wordCount) {
         cloud.stop();
         event.call("end", cloud, tags, bounds);
       }
@@ -109,17 +113,17 @@ module.exports = function () {
 
     canvas.width = canvas.height = 1;
     const ratio = Math.sqrt(context.getImageData(0, 0, 1, 1).data.length >> 2);
-    canvas.width = (cw << 5) / ratio;
-    canvas.height = ch / ratio;
+    canvas.width = (canvasWidth << 5) / ratio;
+    canvas.height = canvasHeight / ratio;
 
     context.fillStyle = context.strokeStyle = "red";
 
     return { context, ratio };
   }
 
-  function place(board, tag, bounds, isFirst = false) {
-    var startX = tag.x,
-      startY = tag.y,
+  function place(board, word, bounds, isFirst = false) {
+    var startX = word.x,
+      startY = word.y,
       maxDelta = Math.sqrt(size[0] * size[0] + size[1] * size[1]),
       s = spiral(size),
       dt = isFirst ? 1 : random() < 0.5 ? 1 : -1,
@@ -134,27 +138,27 @@ module.exports = function () {
 
       if (Math.min(Math.abs(dx), Math.abs(dy)) >= maxDelta) break;
 
-      tag.x = startX + dx;
-      tag.y = startY + dy;
+      word.x = startX + dx;
+      word.y = startY + dy;
 
       if (
-        tag.x + tag.x0 < 0 ||
-        tag.y + tag.y0 < 0 ||
-        tag.x + tag.x1 > size[0] ||
-        tag.y + tag.y1 > size[1]
+        word.x + word.x0 < 0 ||
+        word.y + word.y0 < 0 ||
+        word.x + word.x1 > size[0] ||
+        word.y + word.y1 > size[1]
       )
         continue;
       // TODO only check for collisions within current bounds.
-      if (!bounds || collideRects(tag, bounds)) {
-        if (!cloudCollide(tag, board, size[0])) {
-          var sprite = tag.sprite,
-            w = tag.width >> 5,
+      if (!bounds || collideRects(word, bounds)) {
+        if (!cloudCollide(word, board, size[0])) {
+          var sprite = word.sprite,
+            w = word.width >> 5,
             sw = size[0] >> 5,
-            lx = tag.x - (w << 4),
+            lx = word.x - (w << 4),
             sx = lx & 0x7f,
             msx = 32 - sx,
-            h = tag.y1 - tag.y0,
-            x = (tag.y + tag.y0) * sw + (lx >> 5),
+            h = word.y1 - word.y0,
+            x = (word.y + word.y0) * sw + (lx >> 5),
             last;
           for (var j = 0; j < h; j++) {
             last = 0;
@@ -255,88 +259,97 @@ function cloudPadding() {
 
 // Fetches a monochrome sprite bitmap for the specified text.
 // Load in batches for speed.
-function cloudSprite(contextAndRatio, d, data, di) {
-  if (d.sprite) return;
-  var c = contextAndRatio.context,
+function cloudSprite(contextAndRatio, word, wordArray, wordIndex) {
+  if (word.sprite) return;
+  var context = contextAndRatio.context,
     ratio = contextAndRatio.ratio;
 
-  c.clearRect(0, 0, (cw << 5) / ratio, ch / ratio);
-  var x = 0,
-    y = 0,
-    maxh = 0,
-    n = data.length;
-  --di;
-  while (++di < n) {
-    d = data[di];
-    c.save();
-    c.font =
-      d.style +
+  context.clearRect(0, 0, (canvasWidth << 5) / ratio, canvasHeight / ratio);
+  var xOffset = 0,
+    yOffset = 0,
+    maxWordHeight = 0,
+    wordCount = wordArray.length;
+  --wordIndex;
+  while (++wordIndex < wordCount) {
+    word = wordArray[wordIndex];
+    context.save();
+    context.font =
+      word.style +
       " " +
-      d.weight +
+      word.weight +
       " " +
-      ~~((d.size + 1) / ratio) +
+      ~~((word.size + 1) / ratio) +
       "px " +
-      d.font;
-    const metrics = c.measureText(d.text);
+      word.font;
+    const metrics = context.measureText(word.text);
     const anchor = -Math.floor(metrics.width / 2);
-    let w = (metrics.width + 1) * ratio;
-    let h = d.size << 1;
-    if (d.rotate) {
-      var sr = Math.sin(d.rotate * RADIANS),
-        cr = Math.cos(d.rotate * RADIANS),
-        wcr = w * cr,
-        wsr = w * sr,
-        hcr = h * cr,
-        hsr = h * sr;
-      w =
+    let textWidth = (metrics.width + 1) * ratio;
+    let wordHeight = word.size << 1;
+    if (word.rotate) {
+      var sr = Math.sin(word.rotate * RADIANS),
+        cr = Math.cos(word.rotate * RADIANS),
+        wcr = textWidth * cr,
+        wsr = textWidth * sr,
+        hcr = wordHeight * cr,
+        hsr = wordHeight * sr;
+      textWidth =
         ((Math.max(Math.abs(wcr + hsr), Math.abs(wcr - hsr)) + 0x1f) >> 5) << 5;
-      h = ~~Math.max(Math.abs(wsr + hcr), Math.abs(wsr - hcr));
+      wordHeight = ~~Math.max(Math.abs(wsr + hcr), Math.abs(wsr - hcr));
     } else {
-      w = ((w + 0x1f) >> 5) << 5;
+      textWidth = ((textWidth + 0x1f) >> 5) << 5;
     }
-    if (h > maxh) maxh = h;
-    if (x + w >= cw << 5) {
-      x = 0;
-      y += maxh;
-      maxh = 0;
+    if (wordHeight > maxWordHeight) maxWordHeight = wordHeight;
+    if (xOffset + textWidth >= canvasWidth << 5) {
+      xOffset = 0;
+      yOffset += maxWordHeight;
+      maxWordHeight = 0;
     }
-    if (y + h >= ch) break;
-    c.translate((x + (w >> 1)) / ratio, (y + (h >> 1)) / ratio);
-    if (d.rotate) c.rotate(d.rotate * RADIANS);
-    c.fillText(d.text, anchor, 0);
-    if (d.padding)
-      (c.lineWidth = 2 * d.padding), c.strokeText(d.text, anchor, 0);
-    c.restore();
-    d.width = w;
-    d.height = h;
-    d.xoff = x;
-    d.yoff = y;
-    d.x1 = w >> 1;
-    d.y1 = h >> 1;
-    d.x0 = -d.x1;
-    d.y0 = -d.y1;
-    d.hasText = true;
-    x += w;
+    if (yOffset + wordHeight >= canvasHeight) break;
+    context.translate(
+      (xOffset + (textWidth >> 1)) / ratio,
+      (yOffset + (wordHeight >> 1)) / ratio
+    );
+    if (word.rotate) context.rotate(word.rotate * RADIANS);
+    context.fillText(word.text, anchor, 0);
+    if (word.padding)
+      (context.lineWidth = 2 * word.padding),
+        context.strokeText(word.text, anchor, 0);
+    context.restore();
+    word.width = textWidth;
+    word.height = wordHeight;
+    word.xoff = xOffset;
+    word.yoff = yOffset;
+    word.x1 = textWidth >> 1;
+    word.y1 = wordHeight >> 1;
+    word.x0 = -word.x1;
+    word.y0 = -word.y1;
+    word.hasText = true;
+    xOffset += textWidth;
   }
-  var pixels = c.getImageData(0, 0, (cw << 5) / ratio, ch / ratio).data,
+  var pixels = context.getImageData(
+      0,
+      0,
+      (canvasWidth << 5) / ratio,
+      canvasHeight / ratio
+    ).data,
     sprite = [];
-  while (--di >= 0) {
-    d = data[di];
-    if (!d.hasText) continue;
-    var w = d.width,
+  while (--wordIndex >= 0) {
+    word = wordArray[wordIndex];
+    if (!word.hasText) continue;
+    var w = word.width,
       w32 = w >> 5,
-      h = d.y1 - d.y0;
+      h = word.y1 - word.y0;
     // Zero the buffer
     for (var i = 0; i < h * w32; i++) sprite[i] = 0;
-    x = d.xoff;
-    if (x == null) return;
-    y = d.yoff;
+    xOffset = word.xoff;
+    if (xOffset == null) return;
+    yOffset = word.yoff;
     var seen = 0,
       seenRow = -1;
     for (var j = 0; j < h; j++) {
       for (var i = 0; i < w; i++) {
         var k = w32 * j + (i >> 5),
-          m = pixels[((y + j) * (cw << 5) + (x + i)) << 2]
+          m = pixels[((yOffset + j) * (canvasWidth << 5) + (xOffset + i)) << 2]
             ? 1 << (31 - (i % 32))
             : 0;
         sprite[k] |= m;
@@ -344,27 +357,27 @@ function cloudSprite(contextAndRatio, d, data, di) {
       }
       if (seen) seenRow = j;
       else {
-        d.y0++;
+        word.y0++;
         h--;
         j--;
-        y++;
+        yOffset++;
       }
     }
-    d.y1 = d.y0 + seenRow;
-    d.sprite = sprite.slice(0, (d.y1 - d.y0) * w32);
+    word.y1 = word.y0 + seenRow;
+    word.sprite = sprite.slice(0, (word.y1 - word.y0) * w32);
   }
 }
 
 // Use mask-based collision detection.
-function cloudCollide(tag, board, sw) {
-  sw >>= 5;
+function cloudCollide(tag, board, sizeWidth) {
+  sizeWidth >>= 5;
   var sprite = tag.sprite,
     w = tag.width >> 5,
     lx = tag.x - (w << 4),
     sx = lx & 0x7f,
     msx = 32 - sx,
     h = tag.y1 - tag.y0,
-    x = (tag.y + tag.y0) * sw + (lx >> 5),
+    x = (tag.y + tag.y0) * sizeWidth + (lx >> 5),
     last;
   for (var j = 0; j < h; j++) {
     last = 0;
@@ -375,7 +388,7 @@ function cloudCollide(tag, board, sw) {
       )
         return true;
     }
-    x += sw;
+    x += sizeWidth;
   }
   return false;
 }
