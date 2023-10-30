@@ -64,8 +64,7 @@ module.exports = function () {
     return cloud;
 
     function step() {
-      var start = Date.now();
-      var isFirst = true;
+      const start = Date.now();
       while (
         Date.now() - start < timeInterval &&
         ++wordIndex < wordCount &&
@@ -75,8 +74,7 @@ module.exports = function () {
         word.x = size[0] / 2;
         word.y = size[1] / 2;
         cloudSprite(contextAndRatio, word, wordData, wordIndex);
-        if (word.hasText && place(board, word, bounds, isFirst)) {
-          isFirst = false;
+        if (word.hasText && place(board, word, bounds)) {
           tags.push(word);
           event.call("word", cloud, word);
           if (bounds) cloudBounds(bounds, word);
@@ -121,12 +119,12 @@ module.exports = function () {
     return { context, ratio };
   }
 
-  function place(board, word, bounds, isFirst = false) {
+  function place(board, word, bounds) {
     var startX = word.x,
       startY = word.y,
       maxDelta = Math.sqrt(size[0] * size[0] + size[1] * size[1]),
       s = spiral(size),
-      dt = isFirst ? 1 : random() < 0.5 ? 1 : -1,
+      dt = random() < 0.5 ? 1 : -1,
       t = -dt,
       dxdy,
       dx,
