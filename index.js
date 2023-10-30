@@ -85,6 +85,9 @@ module.exports = function () {
               { x: word.x + word.x0, y: word.y + word.y0 },
               { x: word.x + word.x1, y: word.y + word.y1 },
             ];
+          // Temporary hack
+          word.x -= size[0] >> 1;
+          word.y -= size[1] >> 1;
         }
       }
       if (wordIndex >= wordCount) {
