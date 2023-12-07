@@ -163,8 +163,8 @@ module.exports = function () {
             lx = word.x - (wordWidth << 4),
             sx = lx & 0x7f,
             msx = 32 - sx,
-            h = word.y1 - word.y0,
-            x = (word.y + word.y0) * cloudWidth + (lx >> 5);
+            h = word.y1 - word.y0;
+          var x = (word.y + word.y0) * cloudWidth + (lx >> 5);
           var last;
           for (var j = 0; j < h; j++) {
             last = 0;
@@ -383,8 +383,8 @@ function cloudCollide(tag, board, sizeWidth) {
     lx = tag.x - (w << 4),
     sx = lx & 0x7f,
     msx = 32 - sx,
-    h = tag.y1 - tag.y0,
-    x = (tag.y + tag.y0) * sizeWidth + (lx >> 5);
+    h = tag.y1 - tag.y0;
+  var x = (tag.y + tag.y0) * sizeWidth + (lx >> 5);
   var last;
   for (var j = 0; j < h; j++) {
     last = 0;
