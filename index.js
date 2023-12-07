@@ -77,7 +77,7 @@ module.exports = function () {
 
         if (!tag.hasText) continue;
         if (!place(board, tag, bounds)) {
-          event.call("notPlaced", tag, tagIndex);
+          event.call("notPlaced", cloud, tag, tagIndex);
           continue;
         }
 
