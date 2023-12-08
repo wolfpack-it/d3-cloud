@@ -81,6 +81,9 @@ module.exports = function () {
           if (place(board, tag, bounds)) break;
 
           if (notPlaced(tag)) break;
+
+          delete tag.sprite;
+          cloudSprite(contextAndRatio, tag, tagData, tagIndex);
         }
 
         tags.push(tag);
