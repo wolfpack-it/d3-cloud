@@ -29,7 +29,8 @@ module.exports = function () {
     timer = null,
     random = Math.random,
     cloud = {},
-    canvas = cloudCanvas;
+    canvas = cloudCanvas,
+    notPlaced = wordNotPlaced;
 
   cloud.canvas = function (_) {
     return arguments.length ? ((canvas = functor(_)), cloud) : canvas;
@@ -76,9 +77,10 @@ module.exports = function () {
         cloudSprite(contextAndRatio, tag, tagData, tagIndex);
 
         if (!tag.hasText) continue;
-        if (!place(board, tag, bounds)) {
-          event.call("notPlaced", cloud, tag, tagIndex);
-          continue;
+        for (var index = 0; index < 10; index++) {
+          if (place(board, tag, bounds)) break;
+
+          if (notPlaced(tag)) break;
         }
 
         tags.push(tag);
@@ -237,6 +239,10 @@ module.exports = function () {
     return value === event ? cloud : value;
   };
 
+  cloud.wordNotPlaced = function (word) {
+    return arguments.length ? ((notPlaced = functor(word)), cloud) : notPlaced;
+  };
+
   return cloud;
 };
 
@@ -262,6 +268,10 @@ function cloudRotate() {
 
 function cloudPadding() {
   return 1;
+}
+
+function wordNotPlaced() {
+  return false;
 }
 
 // Fetches a monochrome sprite bitmap for the specified text.
